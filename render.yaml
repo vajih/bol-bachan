@@ -1,0 +1,16 @@
+# Render blueprint for the Bol Bachan realtime server.
+# In Render: New + → Blueprint → pick the vajih/bol-bachan repo → Apply.
+# (The static front-end stays on Vercel; this only defines the WebSocket server.)
+services:
+  - type: web
+    name: bol-bachan-server
+    runtime: node
+    rootDir: server
+    plan: free            # for a live event, bump to "starter" so it never sleeps (see notes)
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: YOUTUBE_API_KEY   # optional — only for the YouTube live-chat bridge; set in dashboard
+        sync: false
