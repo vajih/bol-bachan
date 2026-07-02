@@ -33,10 +33,18 @@ function pushCount(room) { const c = counts(room); toHost(room, { type: 'count',
 
 /* ---------- http (health check for Render/Railway) ---------- */
 const server = http.createServer((req, res) => {
-  if (req.url === '/health' || req.url === '/') {
+  if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, rooms: rooms.size }));
-  } else { res.writeHead(404); res.end(); }
+  } else if (req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end('<!doctype html><meta charset="utf-8"><title>Bol Bachan server</title>' +
+      '<body style="font-family:system-ui,sans-serif;background:#0a0a0d;color:#f6f6fb;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center">' +
+      '<div><h1 style="color:#fbbf24;margin:0 0 8px">Bol Bachan realtime server ✓</h1>' +
+      '<p style="color:#9aa0a6">This is a WebSocket endpoint — there is no web page to view here.</p>' +
+      '<p>Play the game at <a style="color:#f97316" href="https://bol-bachan.vercel.app">bol-bachan.vercel.app</a></p>' +
+      '<p style="color:#54585e;font-size:.85rem">rooms active: ' + rooms.size + '</p></div></body>');
+  } else { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('Not Found'); }
 });
 
 /* ---------- websocket ---------- */
