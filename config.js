@@ -20,8 +20,12 @@ window.BOL_CONFIG = {
 
   // ---- Transport / multiplayer ----
   // 'local'    = everything runs on this one host device (no backend). WORKS TODAY.
-  // 'realtime' = phones join by code via a backend.  *** STUBBED — not wired yet ***
+  // 'realtime' = phones join by code via the WebSocket backend in ./server.
   TRANSPORT: 'local',
+
+  // WebSocket URL of the realtime server (./server). Used when TRANSPORT:'realtime'.
+  // Local dev: 'ws://localhost:8787'.  Production: your 'wss://…' deploy on Render/Railway.
+  REALTIME_URL: 'ws://localhost:8787',
 
   // ---- Remote audience (the hybrid layer) ----
   // When enabled + a realtime backend is wired, the streamed audience votes too.

@@ -79,57 +79,51 @@
     };
   }
 
-  /* ===================== REALTIME (STUB) ===================== */
-  // Implement these against your backend of choice. Recommended for a hybrid
-  // game night + stream: a small Node + `ws` WebSocket server (rooms keyed by
-  // code) hosted somewhere that supports persistent sockets (Render/Railway/Fly).
-  // Vercel is great for the static front-end but not for long-lived sockets.
+  /* ===================== REALTIME (host side, live) ===================== */
+  // Connects to the WebSocket server in ./server (see server/SPEC.md).
+  // The host (index.html) uses this; players/audience use play.html.
   function RealtimeTransport() {
     const bus = Emitter();
-    const NOT_WIRED = 'RealtimeTransport is not wired yet. ' +
-      'Backend hint: ' + (CFG.REALTIME_BACKEND_HINT || 'a WebSocket server') + '. ' +
-      'See transport.js TODOs.';
+    const URL_ = CFG.REALTIME_URL || 'ws://localhost:8787';
+    let ws = null, code = '----', ka = null;
 
-    function warn() { console.warn('[Bol Bachan] ' + NOT_WIRED); }
+    function open(resolve, reject) {
+      try { ws = new WebSocket(URL_); } catch (e) { return reject && reject(e); }
+      ws.onopen = () => { ws.send(JSON.stringify({ type: 'host_create' })); ka = setInterval(() => send({ type: 'ping' }), 25000); };
+      ws.onerror = (e) => { console.warn('[Bol Bachan] realtime socket error', e); if (reject) { reject(new Error('cannot reach ' + URL_)); reject = null; } };
+      ws.onclose = () => { clearInterval(ka); bus.emit('disconnect', {}); };
+      ws.onmessage = (ev) => {
+        let m; try { m = JSON.parse(ev.data); } catch (_) { return; }
+        if (m.type === 'room') { code = m.code; if (resolve) { resolve(code); resolve = null; } }
+        else if (m.type === 'player_join') bus.emit('playerJoin', { id: m.id, name: m.name, role: m.role });
+        else if (m.type === 'submission') bus.emit('submission', { playerId: m.playerId, prompt: m.prompt, text: m.text, source: m.source });
+        else if (m.type === 'vote') bus.emit('vote', { matchupId: m.matchupId, side: m.side, source: m.source });
+        else if (m.type === 'superchat') bus.emit('superchat', m);
+        else if (m.type === 'count') bus.emit('count', { players: m.players, audience: m.audience });
+      };
+    }
+    function send(obj) { try { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); } catch (_) {} }
 
     return {
-      mode: 'realtime-stub',
-      code: '----',
+      mode: 'realtime',
+      get code() { return code; },
       players: [],
 
-      async start() {
-        warn();
-        // TODO: open socket, create room on the server, return the real room code.
-        // const ws = new WebSocket(CFG.REALTIME_URL);
-        // ws.onmessage = (m) => routeServerMessage(JSON.parse(m.data), bus);
-        throw new Error(NOT_WIRED);
-      },
+      start() { return new Promise((resolve, reject) => open(resolve, reject)); },
 
-      addPlayer() { warn(); /* players self-join from phones in realtime mode */ },
-      removePlayer() { warn(); },
+      // In realtime mode players self-join from their phones (play.html) — no local add.
+      addPlayer() {}, removePlayer() {},
 
-      submitAnswer() {
-        warn();
-        // TODO: ws.send({type:'submit', playerId, prompt, text})
-      },
+      submitAnswer(playerId, prompt, text) { send({ type: 'submit', code, prompt, text }); },
+      castVote(matchupId, side, source) { send({ type: 'vote', code, matchupId, side, source }); },
+      broadcastState(state) { send({ type: 'state', code, state }); },
 
-      castVote() {
-        warn();
-        // TODO: ws.send({type:'vote', matchupId, side, source})
-        // The server tags votes from the stream-audience join page as source:'remote'.
-      },
+      // bridge a YouTube Live chat into this room (needs server YOUTUBE_API_KEY + a liveChatId)
+      startYouTube(liveChatId) { send({ type: 'yt_start', code, liveChatId }); },
+      stopYouTube() { send({ type: 'yt_stop', code }); },
 
-      broadcastState() {
-        warn();
-        // TODO: ws.send({type:'state', state})  // host -> all phones + audience
-      },
-
-      // Server should emit these back into `bus`:
-      //   bus.emit('playerJoin', {id,name})
-      //   bus.emit('submission', {playerId, prompt, text, source})
-      //   bus.emit('vote', {matchupId, side, source})  // source:'room' | 'remote'
       on: bus.on,
-      isRemoteAvailable() { return !!(CFG.REMOTE_AUDIENCE && CFG.REMOTE_AUDIENCE.enabled); }
+      isRemoteAvailable() { return true; }
     };
   }
 

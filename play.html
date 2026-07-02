@@ -3,53 +3,135 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Bol Bachan — Join</title>
+  <title>Bol Bachan — Join & Play</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/img/bol-bachan-logo.svg" />
   <style>
     :root{ --bg:#0a0a0d; --fg:#f6f6fb; --muted:#9aa0a6; --line:#2a2a33; --gold:#fbbf24;
-      --grad:linear-gradient(135deg,#dc2626,#f97316,#fbbf24); --font:"Poppins",system-ui,sans-serif; }
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800;900&display=swap');
-    *{box-sizing:border-box} body{ margin:0; min-height:100vh; background:radial-gradient(800px 500px at 50% -10%,#1b1b26,var(--bg)); color:var(--fg);
-      font-family:var(--font); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:26px; text-align:center; }
-    h1{ font-size:2.4rem; margin:0; background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
-    .card{ background:#14141b; border:1px solid var(--line); border-radius:18px; padding:22px; width:min(420px,94vw); }
-    input{ width:100%; background:#0d0d12; border:2px solid var(--line); color:var(--fg); border-radius:12px; padding:14px; font-family:inherit; font-size:1.05rem; margin:8px 0; }
-    button{ width:100%; border:none; border-radius:12px; padding:15px; font-weight:800; font-size:1.05rem; color:#fff; background:var(--grad); cursor:pointer; font-family:inherit; }
-    .note{ color:var(--muted); font-size:.85rem; line-height:1.6; }
-    .stub{ margin-top:14px; background:#0d0d12; border:1px dashed var(--line); border-radius:12px; padding:12px; color:var(--gold); font-size:.82rem; }
+      --a1:#dc2626; --a2:#f97316; --b1:#118ab2; --b2:#06d6a0;
+      --warm:linear-gradient(135deg,#dc2626,#f97316,#fbbf24); --font:"Poppins","Segoe UI",system-ui,sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap');
+    *{ box-sizing:border-box; } body{ margin:0; min-height:100vh; background:radial-gradient(800px 500px at 50% -10%,#1b1b26,var(--bg));
+      color:var(--fg); font-family:var(--font); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px; text-align:center; }
+    h1{ font-size:2.1rem; margin:0; background:var(--warm); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .card{ background:#14141b; border:1px solid var(--line); border-radius:18px; padding:20px; width:min(440px,94vw); }
+    input,textarea{ width:100%; background:#0d0d12; border:2px solid var(--line); color:var(--fg); border-radius:12px; padding:14px; font-family:inherit; font-size:1.05rem; margin:8px 0; }
+    #code{ text-transform:uppercase; letter-spacing:6px; text-align:center; font-weight:900; }
+    button{ width:100%; border:none; border-radius:12px; padding:16px; font-weight:800; font-size:1.05rem; color:#fff; background:var(--warm); cursor:pointer; font-family:inherit; margin-top:6px; }
+    button.ghost{ background:#20202a; border:1px solid var(--line); }
+    .note{ color:var(--muted); font-size:.9rem; line-height:1.6; }
+    .status{ font-size:.82rem; color:var(--muted); margin-top:8px; }
+    .prompt{ font-size:1.4rem; font-weight:800; line-height:1.25; }
+    .prompt .blank{ color:var(--gold); }
+    .voteBtns{ display:flex; flex-direction:column; gap:12px; margin-top:12px; }
+    .vb{ padding:20px; border-radius:14px; font-size:1.15rem; font-weight:800; border:3px solid transparent; }
+    .vb.A{ background:linear-gradient(135deg,rgba(220,38,38,.22),rgba(249,115,22,.14)); border-color:var(--a1); }
+    .vb.B{ background:linear-gradient(135deg,rgba(17,138,178,.22),rgba(6,214,160,.14)); border-color:var(--b1); }
+    .vb:disabled{ opacity:.5; }
+    .hidden{ display:none !important; }
+    .pill{ display:inline-block; background:#20202a; border:1px solid var(--line); border-radius:999px; padding:4px 12px; font-size:.75rem; color:var(--gold); font-weight:700; }
   </style>
 </head>
 <body>
   <h1>Bol Bachan</h1>
-  <div class="card">
-    <div class="note">Enter the room code on the big screen to join.</div>
-    <input id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase; letter-spacing:6px; text-align:center; font-weight:900;" />
+
+  <!-- JOIN -->
+  <div class="card" id="joinCard">
+    <div class="note">Enter the room code shown on the big screen.</div>
+    <input id="code" maxlength="4" placeholder="CODE" />
     <input id="name" maxlength="18" placeholder="Your name" />
-    <button id="join">Join the game</button>
-    <div class="stub" id="stub"></div>
+    <button id="joinBtn">Join to play</button>
+    <button id="watchBtn" class="ghost">Just watch &amp; vote</button>
+    <div class="status" id="joinStatus"></div>
+  </div>
+
+  <!-- PLAY -->
+  <div class="card hidden" id="playCard">
+    <span class="pill" id="roleTag">player</span>
+    <div id="waiting" class="note" style="margin-top:12px;">Waiting for the next prompt…</div>
+
+    <div id="submitBox" class="hidden">
+      <div class="prompt" id="pPrompt">—</div>
+      <textarea id="answer" maxlength="120" placeholder="Your funniest answer…"></textarea>
+      <button id="sendBtn">Send answer</button>
+      <div class="status" id="submitStatus"></div>
+    </div>
+
+    <div id="voteBox" class="hidden">
+      <div class="prompt" id="vPrompt">—</div>
+      <div class="voteBtns">
+        <button class="vb A" id="voteA">A —</button>
+        <button class="vb B" id="voteB">B —</button>
+      </div>
+      <div class="status" id="voteStatus"></div>
+    </div>
+
+    <div id="infoBox" class="hidden">
+      <div class="prompt" id="infoText">—</div>
+    </div>
   </div>
 
   <script src="./config.js"></script>
-  <script src="./transport.js"></script>
   <script>
-    (function(){
-      var CFG = window.BOL_CONFIG || {};
-      var enabled = CFG.TRANSPORT === 'realtime' && CFG.REMOTE_AUDIENCE && CFG.REMOTE_AUDIENCE.enabled;
-      var stub = document.getElementById('stub');
-      if(!enabled){
-        stub.innerHTML = '🛰️ Phone join is <b>stubbed</b> in this MVP. It activates once a realtime ' +
-          'backend is wired (see transport.js). For now the host runs the game on one screen.';
-      } else {
-        stub.style.display='none';
-      }
-      document.getElementById('join').onclick = function(){
-        if(!enabled){
-          stub.innerHTML = '⏳ Not connected yet — this is the stubbed join screen. ' +
-            'Wire RealtimeTransport.start() to a WebSocket server to make this live.';
-          return;
-        }
-        // TODO (realtime): connect, send {type:'join', code, name, role:'player'|'audience'}
+  (function(){
+    const $=id=>document.getElementById(id);
+    const URL_ = (window.BOL_CONFIG && window.BOL_CONFIG.REALTIME_URL) || 'ws://localhost:8787';
+    let ws=null, code='', role='player', lastKey='', votedKey='';
+
+    function fmt(p){ return (p||'').replace('___','<span class="blank">______</span>'); }
+    function showPlay(){ $('joinCard').classList.add('hidden'); $('playCard').classList.remove('hidden'); }
+    function section(name){ ['waiting','submitBox','voteBox','infoBox'].forEach(s=> $(s).classList.toggle('hidden', s!==name)); }
+
+    function connect(r){
+      role=r; code=($('code').value||'').trim().toUpperCase();
+      const name=($('name').value||'Guest').trim();
+      if(code.length<4){ $('joinStatus').textContent='Enter the 4-letter code.'; return; }
+      $('joinStatus').textContent='Connecting…';
+      try{ ws=new WebSocket(URL_); }catch(e){ $('joinStatus').textContent='Cannot connect.'; return; }
+      ws.onopen=()=> ws.send(JSON.stringify({type:'join', code, name, role}));
+      ws.onerror=()=> $('joinStatus').textContent='Cannot reach the game server.';
+      ws.onclose=()=>{ if(!$('playCard').classList.contains('hidden')) $('waiting').textContent='Disconnected. Refresh to rejoin.'; };
+      ws.onmessage=(ev)=>{ let m; try{ m=JSON.parse(ev.data); }catch(_){ return; }
+        if(m.type==='joined'){ $('roleTag').textContent=role; showPlay(); section('waiting'); }
+        else if(m.type==='error'){ $('joinStatus').textContent=m.message||'Error'; }
+        else if(m.type==='state'){ renderState(m.state); }
       };
-    })();
+    }
+
+    function renderState(s){
+      if(!s){ return; }
+      const key = s.view+'-'+s.round+'-'+s.matchupIn;
+      if(s.view==='prompt'){
+        section(role==='player'?'submitBox':'waiting');
+        $('pPrompt').innerHTML=fmt(s.prompt);
+        if(key!==lastKey){ $('answer').value=''; $('submitStatus').textContent=''; $('sendBtn').disabled=false; }
+      } else if(s.view==='vote'){
+        section('voteBox');
+        $('vPrompt').innerHTML=fmt(s.prompt);
+        $('voteA').textContent='A — '+(s.aText||'');
+        $('voteB').textContent='B — '+(s.bText||'');
+        const canVote = votedKey!==key;
+        $('voteA').disabled=!canVote; $('voteB').disabled=!canVote;
+        $('voteStatus').textContent = canVote ? 'Tap the funnier answer' : 'Vote counted ✅';
+      } else if(s.view==='reveal'){
+        section('infoBox'); $('infoText').textContent='And the winner is… 🏆';
+      } else if(s.view==='scoreboard'){
+        section('infoBox'); $('infoText').textContent='Scores are in — next round coming up!';
+      } else if(s.view==='finale'){
+        const w=(s.scores&&s.scores[0])||{name:'—'}; section('infoBox'); $('infoText').textContent='🏆 Champion: '+w.name;
+      } else { section('waiting'); }
+      lastKey=key;
+    }
+
+    function send(o){ try{ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }catch(_){} }
+
+    $('joinBtn').onclick=()=>connect('player');
+    $('watchBtn').onclick=()=>connect('audience');
+    $('sendBtn').onclick=()=>{ const t=$('answer').value.trim(); if(!t) return;
+      send({type:'submit', code, prompt:$('pPrompt').textContent, text:t}); $('sendBtn').disabled=true; $('submitStatus').textContent='Sent! ✅'; };
+    $('voteA').onclick=()=>castVote('a'); $('voteB').onclick=()=>castVote('b');
+    function castVote(side){ send({type:'vote', code, side}); votedKey=lastKey;
+      $('voteA').disabled=true; $('voteB').disabled=true; $('voteStatus').textContent='Vote counted ✅'; }
+  })();
   </script>
 </body>
 </html>

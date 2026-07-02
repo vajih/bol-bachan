@@ -307,14 +307,15 @@
     let bview = 'idle';
     function publish(v){
       if(v) bview=v;
-      if(!bc) return;
       const m=schedule[mi]||{}, A=players[m.ai], B=players[m.bi];
-      bc.postMessage({ t:'state', view:bview,
+      const payload={ view:bview,
         round:roundOf(mi), matchupIn:matchInRound(mi), rounds:CFG.ROUNDS, perRound:CFG.MATCHUPS_PER_ROUND,
         prompt:m.prompt||'', aName:A?A.name:'', bName:B?B.name:'',
         aText:m.aText||'', bText:m.bText||'',
         votesA:(m.votesA||0)+(m.remoteA||0), votesB:(m.votesB||0)+(m.remoteB||0), done:!!m.done,
-        scores:sortedPlayers().map(p=>({name:p.name,score:p.score})), demo:demo });
+        scores:sortedPlayers().map(p=>({name:p.name,score:p.score})), demo:demo };
+      if(bc) bc.postMessage(Object.assign({t:'state'}, payload));           // same-machine broadcast overlay
+      if(transport && transport.mode==='realtime' && transport.broadcastState) transport.broadcastState(payload); // phones/audience
     }
     if(bc) bc.onmessage=e=>{ if(e.data && e.data.t==='hello') publish(); };  // new broadcast tab asks for current state
 
