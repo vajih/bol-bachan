@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Bol Bachan — Join</title>
+  <style>
+    :root{ --bg:#0a0a0d; --fg:#f6f6fb; --muted:#9aa0a6; --line:#2a2a33; --gold:#fbbf24;
+      --grad:linear-gradient(135deg,#dc2626,#f97316,#fbbf24); --font:"Poppins",system-ui,sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800;900&display=swap');
+    *{box-sizing:border-box} body{ margin:0; min-height:100vh; background:radial-gradient(800px 500px at 50% -10%,#1b1b26,var(--bg)); color:var(--fg);
+      font-family:var(--font); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:26px; text-align:center; }
+    h1{ font-size:2.4rem; margin:0; background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .card{ background:#14141b; border:1px solid var(--line); border-radius:18px; padding:22px; width:min(420px,94vw); }
+    input{ width:100%; background:#0d0d12; border:2px solid var(--line); color:var(--fg); border-radius:12px; padding:14px; font-family:inherit; font-size:1.05rem; margin:8px 0; }
+    button{ width:100%; border:none; border-radius:12px; padding:15px; font-weight:800; font-size:1.05rem; color:#fff; background:var(--grad); cursor:pointer; font-family:inherit; }
+    .note{ color:var(--muted); font-size:.85rem; line-height:1.6; }
+    .stub{ margin-top:14px; background:#0d0d12; border:1px dashed var(--line); border-radius:12px; padding:12px; color:var(--gold); font-size:.82rem; }
+  </style>
+</head>
+<body>
+  <h1>Bol Bachan</h1>
+  <div class="card">
+    <div class="note">Enter the room code on the big screen to join.</div>
+    <input id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase; letter-spacing:6px; text-align:center; font-weight:900;" />
+    <input id="name" maxlength="18" placeholder="Your name" />
+    <button id="join">Join the game</button>
+    <div class="stub" id="stub"></div>
+  </div>
+
+  <script src="./config.js"></script>
+  <script src="./transport.js"></script>
+  <script>
+    (function(){
+      var CFG = window.BOL_CONFIG || {};
+      var enabled = CFG.TRANSPORT === 'realtime' && CFG.REMOTE_AUDIENCE && CFG.REMOTE_AUDIENCE.enabled;
+      var stub = document.getElementById('stub');
+      if(!enabled){
+        stub.innerHTML = '🛰️ Phone join is <b>stubbed</b> in this MVP. It activates once a realtime ' +
+          'backend is wired (see transport.js). For now the host runs the game on one screen.';
+      } else {
+        stub.style.display='none';
+      }
+      document.getElementById('join').onclick = function(){
+        if(!enabled){
+          stub.innerHTML = '⏳ Not connected yet — this is the stubbed join screen. ' +
+            'Wire RealtimeTransport.start() to a WebSocket server to make this live.';
+          return;
+        }
+        // TODO (realtime): connect, send {type:'join', code, name, role:'player'|'audience'}
+      };
+    })();
+  </script>
+</body>
+</html>
