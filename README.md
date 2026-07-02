@@ -55,6 +55,25 @@ Edit `data/prompts.csv` (`id, prompt, demo_answers`). Use `___` for the blank.
 `demo_answers` (pipe-separated) are only used by the Auto-Demo. Keep it local and roast-y.
 The deck is the product — retire prompts that flop, keep the ones that land.
 
+## Broadcast mode (for YouTube Live / OBS)
+`broadcast.html` is a clean full-screen "program output" scene — big prompt card,
+head-to-head answers with animated vote bars, scoreboard, and a champion screen — with
+no host controls or buttons. It mirrors the live game in real time.
+
+How it works: the game (`index.html`) publishes its state over the browser's
+`BroadcastChannel`; `broadcast.html` listens and renders. Open it from the game's
+**📺 Broadcast** chip (or the home-screen link), or go straight to `/broadcast.html`.
+
+**Streaming it:** open Broadcast View in its own browser window (same computer + same
+browser as the game — that's how the two tabs stay in sync), then in OBS add a
+**Window Capture** of that window (put it on a second monitor or a spare window).
+Note: an OBS *Browser Source* runs in a separate browser and won't receive the
+BroadcastChannel messages — use Window Capture for now. (Cross-machine sync, chat
+voting, and Super Chat arrive with the realtime backend.)
+
+Tip: the Auto-Demo also drives the broadcast view, so you can rehearse the whole
+stream look before the event.
+
 ## Deploy
 Static site — deploy anywhere. See **DEPLOY.md** for the fastest paths (Vercel CLI,
 GitHub import, or Netlify drop).

@@ -117,6 +117,7 @@
   <div class="topbar" id="topbar" style="display:none;">
     <div class="chip live" id="liveChip"><span class="blink"></span> AUTO-DEMO</div>
     <button class="chip" id="musicChip">🎵 Music</button>
+    <button class="chip" id="castChip">📺 Broadcast</button>
     <button class="chip" id="menuChip">⏏ Menu</button>
   </div>
 
@@ -161,6 +162,7 @@
     </div>
     <div class="meta" id="homeMeta">loading prompts…</div>
     <button class="chip" id="homeMusic" style="margin-top:2px;">🎵 Music: On</button>
+    <a class="chip" id="homeCast" href="broadcast.html" target="_blank" rel="noopener" style="text-decoration:none; margin-top:2px;">📺 Open Broadcast View (for OBS / YouTube Live)</a>
   </section>
 
   <!-- HOW -->
@@ -300,6 +302,22 @@
       }catch(e){ console.error(e); $('homeMeta').innerHTML='⚠️ '+e.message+' (run via a local server, not file://)'; }
     }
 
+    /* ---------- broadcast: OBS "program output" via BroadcastChannel ---------- */
+    const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('bolbachan') : null;
+    let bview = 'idle';
+    function publish(v){
+      if(v) bview=v;
+      if(!bc) return;
+      const m=schedule[mi]||{}, A=players[m.ai], B=players[m.bi];
+      bc.postMessage({ t:'state', view:bview,
+        round:roundOf(mi), matchupIn:matchInRound(mi), rounds:CFG.ROUNDS, perRound:CFG.MATCHUPS_PER_ROUND,
+        prompt:m.prompt||'', aName:A?A.name:'', bName:B?B.name:'',
+        aText:m.aText||'', bText:m.bText||'',
+        votesA:(m.votesA||0)+(m.remoteA||0), votesB:(m.votesB||0)+(m.remoteB||0), done:!!m.done,
+        scores:sortedPlayers().map(p=>({name:p.name,score:p.score})), demo:demo });
+    }
+    if(bc) bc.onmessage=e=>{ if(e.data && e.data.t==='hello') publish(); };  // new broadcast tab asks for current state
+
     /* ---------- lobby ---------- */
     function renderPlayers(){
       const el=$('playerList'); el.innerHTML='';
@@ -343,6 +361,7 @@
       $('labelB').textContent=players[m.bi].name+' says…';
       $('answerA').value=m.aText; $('answerB').value=m.bText;
       show('collect'); $('answerA').focus();
+      publish('prompt');
     }
     function toVote(){
       const m=schedule[mi];
@@ -354,7 +373,7 @@
     /* ---------- vote ---------- */
     let voteInterval=null, voteLeft=0;
     function goVote(){
-      const m=schedule[mi];
+      const m=schedule[mi]; bview='vote';
       $('voteRoundLabel').textContent='Round '+roundOf(mi)+' · Matchup '+matchInRound(mi);
       $('votePrompt').innerHTML=fmtPrompt(m.prompt);
       $('whoA').textContent=players[m.ai].name; $('whoB').textContent=players[m.bi].name;
@@ -364,8 +383,9 @@
       $('remoteState').textContent = CFG.REMOTE_AUDIENCE.enabled ? 'live' : 'stubbed — connect backend to enable';
       show('vote');
       startTimer();
+      publish('vote');
     }
-    function renderVotes(){ const m=schedule[mi]; $('votesA').textContent=m.votesA+(m.remoteA?(' +'+m.remoteA):''); $('votesB').textContent=m.votesB+(m.remoteB?(' +'+m.remoteB):''); }
+    function renderVotes(){ const m=schedule[mi]; $('votesA').textContent=m.votesA+(m.remoteA?(' +'+m.remoteA):''); $('votesB').textContent=m.votesB+(m.remoteB?(' +'+m.remoteB):''); publish(); }
     function startTimer(){ clearInterval(voteInterval); voteLeft=CFG.VOTE_SECONDS;
       $('voteTimer').textContent='⏱ '+voteLeft+'s';
       voteInterval=setInterval(()=>{ voteLeft--; $('voteTimer').textContent= voteLeft>0?('⏱ '+voteLeft+'s'):'⏱ time!'; if(voteLeft<=0) clearInterval(voteInterval); },1000); }
@@ -381,7 +401,7 @@
       const winner = aWin?players[m.ai]:players[m.bi];
       const pts = (aWin?aTot:bTot)*CFG.POINTS_PER_VOTE || CFG.POINTS_PER_VOTE;
       winner.score += pts; m.done=true;
-      burst(10);
+      burst(10); publish('reveal');
       const last = (mi>=schedule.length-1);
       const endOfRound = (matchInRound(mi)===CFG.MATCHUPS_PER_ROUND);
       setTimeout(()=>{ if(demo) return; if(last) finale(); else if(endOfRound) scoreboard(); else { mi++; goCollect(); } }, demo?1: 1400);
@@ -394,10 +414,10 @@
     function renderBoard(el){ el.innerHTML=''; sortedPlayers().forEach((p,i)=>{ const d=document.createElement('div');
       d.className='scoreRow'+(i===0?' lead':''); d.innerHTML='<span>'+(i===0?'👑 ':'')+p.name+'</span><span class="pts">'+p.score+'</span>'; el.appendChild(d); }); }
     function scoreboard(){ $('sbTitle').textContent='After Round '+roundOf(mi); renderBoard($('sbBoard'));
-      $('sbNext').onclick=()=>{ mi++; goCollect(); }; show('scoreboard'); }
+      $('sbNext').onclick=()=>{ mi++; goCollect(); }; show('scoreboard'); publish('scoreboard'); }
     function finale(){ const w=sortedPlayers()[0];
       $('champName').textContent='👑 '+w.name; $('champScore').textContent='Best of the Night · '+w.score+' points';
-      renderBoard($('finalBoard')); show('finale'); burst(120); }
+      renderBoard($('finalBoard')); show('finale'); burst(120); publish('finale'); }
 
     /* ---------- confetti ---------- */
     function burst(n){ const wrap=$('confetti'), cols=['#dc2626','#f97316','#fbbf24','#06d6a0','#f6f6fb'];
@@ -425,7 +445,7 @@
       $('votePrompt').innerHTML=fmtPrompt(m.prompt);
       $('whoA').textContent=players[m.ai].name; $('whoB').textContent=players[m.bi].name;
       $('txtA').textContent=m.aText; $('txtB').textContent=m.bText;
-      $('ansA').className='ans a'; $('ansB').className='ans b'; m.votesA=0; m.votesB=0; renderVotes();
+      bview='vote'; $('ansA').className='ans a'; $('ansB').className='ans b'; m.votesA=0; m.votesB=0; renderVotes();
       $('remoteState').textContent = CFG.REMOTE_AUDIENCE.enabled?'live':'stubbed';
       $('voteTimer').textContent='⏱ voting…'; show('vote');
       // simulate votes climbing
@@ -436,10 +456,10 @@
         if(step<=total) dT(climb, 480); else dT(()=>{ if(!demo) return;
           // reveal
           const aWin=m.votesA>=m.votesB; $('ansA').classList.add(aWin?'win':'lose'); $('ansB').classList.add(aWin?'lose':'win');
-          (aWin?players[m.ai]:players[m.bi]).score += (aWin?m.votesA:m.votesB)*CFG.POINTS_PER_VOTE; burst(10);
+          (aWin?players[m.ai]:players[m.bi]).score += (aWin?m.votesA:m.votesB)*CFG.POINTS_PER_VOTE; m.done=true; burst(10); publish('reveal');
           dT(()=>{ if(!demo) return;
             if(mi>=schedule.length-1){ finale(); dT(()=>{ if(demo) restartDemo(); }, 6000); }
-            else if(matchInRound(mi)===CFG.MATCHUPS_PER_ROUND){ renderBoard($('sbBoard')); $('sbTitle').textContent='After Round '+roundOf(mi); show('scoreboard'); dT(()=>{ mi++; demoStep(); },4400); }
+            else if(matchInRound(mi)===CFG.MATCHUPS_PER_ROUND){ renderBoard($('sbBoard')); $('sbTitle').textContent='After Round '+roundOf(mi); show('scoreboard'); publish('scoreboard'); dT(()=>{ mi++; demoStep(); },4400); }
             else { mi++; demoStep(); }
           }, 3200);
         }, 1000);
@@ -451,13 +471,14 @@
         m.aText=pool[0]||'…'; m.bText=pool[1]||pool[0]||'…'; }); mi=0; demoStep(); }
     function stopDemo(){ demo=false; demoTimers.forEach(clearTimeout); demoTimers=[]; $('liveChip').classList.remove('show'); }
 
-    function toMenu(){ stopDemo(); clearInterval(voteInterval); $('topbar').style.display='none'; show('home'); }
+    function toMenu(){ stopDemo(); clearInterval(voteInterval); $('topbar').style.display='none'; show('home'); publish('idle'); }
 
     /* ---------- wire ---------- */
     $('btnDemo').onclick=startDemo;
     $('btnHost').onclick=()=>{ players=[]; renderPlayers(); $('roomCode').textContent=transport.code||'----'; show('lobby'); };
     $('btnHow').onclick=()=>show('how'); $('howBack').onclick=()=>show('home');
     $('menuChip').onclick=toMenu; $('finMenu').onclick=toMenu;
+    $('castChip').onclick=()=>window.open('broadcast.html','_blank','noopener');
     $('addBtn').onclick=()=>{ addPlayer($('nameInput').value); $('nameInput').value=''; $('nameInput').focus(); };
     $('nameInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ addPlayer($('nameInput').value); $('nameInput').value=''; } });
     $('fillDemo').onclick=()=>{ players=[]; BolData.shuffle(DEMO_NAMES).slice(0,6).forEach(addPlayer); };
